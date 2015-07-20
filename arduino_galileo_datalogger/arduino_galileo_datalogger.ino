@@ -19,20 +19,21 @@ void setup() {
   
   Serial.begin(115200);
   Serial1.begin(115200);
-  Serial2.begin(115200);
   
-  Serial.println("****** STARTING DATALOGGER ******\n");
+  Serial.println("\n****** STARTING DATALOGGER ******\n");
   
   initSDCard();
+  delay(1000);
   setupLogging();
-
-  Serial.println("\n\n****** LOGGER COMMAND LINE *******");
-  Serial.println("h for help and info");
-  Serial.print("> ");
+  delay(1000);
+  
+//  Serial.println("\n\n****** LOGGER COMMAND LINE *******");
+//  Serial.println("h for help and info");
+//  Serial.print("> ");
 }
 
 void loop() {
-  attemptConsole();
+  //attemptConsole();
   attemptLogging();
 }
 
@@ -131,7 +132,7 @@ int createFile(String fileName) {
   
   File newFile = SD.open(charFileName, FILE_WRITE);
   newFile.close();
-  
+  delay(500);
   if (SD.exists(charFileName)) {
     return 0;
   } 
