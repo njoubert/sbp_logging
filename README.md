@@ -13,6 +13,7 @@ It then attempts to decode it.
 
 Example usage:
 	
+	cd decoder
 	make
 	decoder ../data/simple.dat
 
