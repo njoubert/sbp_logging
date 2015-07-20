@@ -132,7 +132,7 @@ s8 sbp_process(sbp_state_t *s, u8 temp)
  * Message resides in sbp_state_t
  */
 void sbp_process_message(sbp_state_t* s) {
-  printf("Decoded message:");
+  printf("Decoded message:\n");
   printf("  type:   0x%x\n", s->msg_type);
   printf("  sender: 0x%x\n", s->sender_id);
   printf("  len:    0x%x\n", s->msg_len);
