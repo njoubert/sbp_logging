@@ -52,15 +52,22 @@ u16 crc16_ccitt(const u8 *buf, u32 len, u16 crc)
 /** Parses SBP messages from individual bytes passed as u8 temp
  * Partial message and state lives in sbp_state_t
  */
+
+u32 read_this_message = 0;
+u32 junk = 0;
 s8 sbp_process(sbp_state_t *s, u8 temp, void (*process_message)(sbp_state_t *s))
 {
   u16 crc;
+  read_this_message += 1;
 
   switch (s->state) {
   case WAITING:
     if (temp == SBP_PREAMBLE) {
+      read_this_message = 1;
       s->n_read = 0;
       s->state = GET_TYPE;
+    } else {
+      junk += 1;
     }
     break;
 
@@ -115,8 +122,10 @@ s8 sbp_process(sbp_state_t *s, u8 temp, void (*process_message)(sbp_state_t *s))
       /* Message complete, process it. */
         process_message(s);
         return SBP_OK;
-      } else
+      } else {
+        junk += read_this_message;
         return SBP_CRC_ERROR;
+      }
     }
     break;
 
@@ -188,11 +197,12 @@ int main(int argc, char **argv)
     return -1;
   }
 
+  uint32_t crc_errors = 0;
   uint32_t read;
   uint32_t nread = 0;
   while ((read = fgetc(fp)) != EOF) {
     if (SBP_OK != sbp_process(&sbp_state, (uint8_t) read, process_message)) {
-      printf("SBP ERROR\n");
+      crc_errors += 1;
     }
     nread += 1;
   }
@@ -200,7 +210,7 @@ int main(int argc, char **argv)
   if (0 == strcmp(argv[1], "-j")) {
     printf("]\n");
   } else if (0 == strcmp(argv[1], "-d")) {
-    printf("Read %d bytes.\n", nread);
+    printf("Read %d bytes total, %d bytes junk, %d crc errors\n", nread, junk, crc_errors);
   } 
 
 
