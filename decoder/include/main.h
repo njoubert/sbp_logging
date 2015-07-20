@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <inttypes.h>
+#include <string.h>
 
 /** Signed 8-bit integer. */
 typedef int8_t s8;
@@ -56,5 +57,3 @@ typedef struct {
 sbp_state_t sbp_state;
 
 u16 crc16_ccitt(const u8 *buf, u32 len, u16 crc);
-s8 sbp_process(sbp_state_t *s, u8 temp);
-void sbp_process_message(sbp_state_t* s);

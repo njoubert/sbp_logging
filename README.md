@@ -15,13 +15,15 @@ Example usage:
 	
 	cd decoder
 	make
-	decoder ../data/simple.dat
+	decoder -d ../data/simple.dat
 
 simple.dat contains exactly one SBP heartbeat message (type 0xFFFF, 12 bytes long with header). The above output will be:
 
-    Decoded message:
-      type:   0xffff
-      sender: 0x43f
-      len:    0x4
-      crc:    0xd976
-    Read 12 bytes.
+	> ./decoder -d ../data/simple.dat 
+	Message: type = 0xffff, sender = 0x043f, len = 0x04, crc = 0xd976
+	Read 12 bytes.
+
+If you want to generate JSON data of these messages, you can:
+
+	> ./decoder -j ../data/simple.dat
+	

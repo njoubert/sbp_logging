@@ -52,7 +52,7 @@ u16 crc16_ccitt(const u8 *buf, u32 len, u16 crc)
 /** Parses SBP messages from individual bytes passed as u8 temp
  * Partial message and state lives in sbp_state_t
  */
-s8 sbp_process(sbp_state_t *s, u8 temp)
+s8 sbp_process(sbp_state_t *s, u8 temp, void (*process_message)(sbp_state_t *s))
 {
   u16 crc;
 
@@ -113,7 +113,7 @@ s8 sbp_process(sbp_state_t *s, u8 temp)
       if (s->crc == crc) {
 
       /* Message complete, process it. */
-        sbp_process_message(s);
+        process_message(s);
         return SBP_OK;
       } else
         return SBP_CRC_ERROR;
@@ -131,22 +131,57 @@ s8 sbp_process(sbp_state_t *s, u8 temp)
 /** Processes a decoded and CRC-checked message
  * Message resides in sbp_state_t
  */
-void sbp_process_message(sbp_state_t* s) {
-  printf("Decoded message:\n");
-  printf("  type:   0x%x\n", s->msg_type);
-  printf("  sender: 0x%x\n", s->sender_id);
-  printf("  len:    0x%x\n", s->msg_len);
-  printf("  crc:    0x%x\n", s->crc);
+void sbp_process_message_debug(sbp_state_t* s) {
+  printf("Message: type = 0x%.4x, sender = 0x%.4x, len = 0x%.2x, crc = 0x%.4x\n",
+  s->msg_type,
+  s->sender_id,
+  s->msg_len,
+  s->crc);
 }
 
+bool first = true;
+void sbp_process_message_json(sbp_state_t* s) {
+
+  if (!first)
+    printf(",\n");
+  else
+    first = false;
+  printf("{");
+  printf("\"data\": {");
+    printf("\"sender\": %d, ",   s->sender_id);
+    printf("\"msg_type\": %d, ", s->msg_type);
+    printf("\"length\": %d, ",   s->msg_len);
+    printf("\"crc\": %d, ",      s->crc);
+    printf("\"payload\": \"\"");
+    
+  printf("}");
+
+
+}
+
+int usage() 
+{
+  printf("Usage: decoder (-j|-d) <logger.bin>\n");
+  return -1;
+}
 int main(int argc, char **argv) 
 {
-  if (argc != 2) {
-    printf("Usage: decoder <logger.bin>\n");
-    return -1;
+  if (argc != 3) {
+    return usage();
   }
 
-  FILE *fp = fopen(argv[1], "r");
+  void (*process_message)(sbp_state_t *s);
+
+  if (0 == strcmp(argv[1], "-j")) {
+    printf("[");
+    process_message = &sbp_process_message_json;
+  } else if (0 == strcmp(argv[1], "-d")) {
+    process_message = &sbp_process_message_debug;
+  } else {
+    return usage();
+  }
+
+  FILE *fp = fopen(argv[2], "r");
 
   if (0 == fp) {
     printf("Could not open %s.\n", argv[1]);
@@ -156,12 +191,19 @@ int main(int argc, char **argv)
   uint32_t read;
   uint32_t nread = 0;
   while ((read = fgetc(fp)) != EOF) {
-    if (SBP_OK != sbp_process(&sbp_state, (uint8_t) read)) {
+    if (SBP_OK != sbp_process(&sbp_state, (uint8_t) read, process_message)) {
       printf("SBP ERROR\n");
     }
     nread += 1;
   }
-  fprintf(stderr, "Read %d bytes.\n", nread);
+
+  if (0 == strcmp(argv[1], "-j")) {
+    printf("]\n");
+  } else if (0 == strcmp(argv[1], "-d")) {
+    printf("Read %d bytes.\n", nread);
+  } 
+
+
   fclose(fp);
   return 0;
 
