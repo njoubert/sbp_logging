@@ -126,7 +126,8 @@ s8 sbp_process(sbp_state_t *s, u8 temp, void (*process_message)(sbp_state_t *s))
         process_message(s);
         return SBP_OK;
       } else {
-        junk_in_messages += read_this_message;
+        junk_in_messages += 1;
+        junk_between_messages -= (read_this_message - 1);
         if (0 != fseek(fp, (long int) -1*read_this_message+1, SEEK_CUR))
           printf("ERROR SEEKING");
         read_this_message = 0;
