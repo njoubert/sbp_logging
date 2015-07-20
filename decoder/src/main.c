@@ -3,6 +3,8 @@
 
 #define SBP_PREAMBLE 0x55
 
+FILE *fp;
+
 /* CRC16 implementation acording to CCITT standards */
 static const u16 crc16tab[256] = {
   0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50A5, 0x60C6, 0x70E7,
@@ -53,8 +55,9 @@ u16 crc16_ccitt(const u8 *buf, u32 len, u16 crc)
  * Partial message and state lives in sbp_state_t
  */
 
-u32 read_this_message = 0;
-u32 junk = 0;
+long int read_this_message = 0;
+u32 junk_in_messages = 0;
+u32 junk_between_messages = 0;
 s8 sbp_process(sbp_state_t *s, u8 temp, void (*process_message)(sbp_state_t *s))
 {
   u16 crc;
@@ -67,7 +70,7 @@ s8 sbp_process(sbp_state_t *s, u8 temp, void (*process_message)(sbp_state_t *s))
       s->n_read = 0;
       s->state = GET_TYPE;
     } else {
-      junk += 1;
+      junk_between_messages += 1;
     }
     break;
 
@@ -118,12 +121,15 @@ s8 sbp_process(sbp_state_t *s, u8 temp, void (*process_message)(sbp_state_t *s))
       crc = crc16_ccitt(s->msg_buff, s->msg_len, crc);
 
       if (s->crc == crc) {
-
+        read_this_message = 0;
       /* Message complete, process it. */
         process_message(s);
         return SBP_OK;
       } else {
-        junk += read_this_message;
+        junk_in_messages += read_this_message;
+        if (0 != fseek(fp, (long int) -1*read_this_message+1, SEEK_CUR))
+          printf("ERROR SEEKING");
+        read_this_message = 0;
         return SBP_CRC_ERROR;
       }
     }
@@ -142,10 +148,10 @@ s8 sbp_process(sbp_state_t *s, u8 temp, void (*process_message)(sbp_state_t *s))
  */
 void sbp_process_message_debug(sbp_state_t* s) {
   printf("Message: type = 0x%.4x, sender = 0x%.4x, len = 0x%.2x, crc = 0x%.4x\n",
-  s->msg_type,
-  s->sender_id,
-  s->msg_len,
-  s->crc);
+    s->msg_type,
+    s->sender_id,
+    s->msg_len,
+    s->crc);
 }
 
 bool first = true;
@@ -173,6 +179,8 @@ int usage()
   printf("Usage: decoder (-j|-d) <logger.bin>\n");
   return -1;
 }
+
+
 int main(int argc, char **argv) 
 {
   if (argc != 3) {
@@ -190,7 +198,7 @@ int main(int argc, char **argv)
     return usage();
   }
 
-  FILE *fp = fopen(argv[2], "r");
+  fp = fopen(argv[2], "rb");
 
   if (0 == fp) {
     printf("Could not open %s.\n", argv[1]);
@@ -205,12 +213,16 @@ int main(int argc, char **argv)
       crc_errors += 1;
     }
     nread += 1;
+    if (ferror(fp)) {
+      printf("FERROR");
+      break;
+    }
   }
 
   if (0 == strcmp(argv[1], "-j")) {
     printf("]\n");
   } else if (0 == strcmp(argv[1], "-d")) {
-    printf("Read %d bytes total, %d bytes junk, %d crc errors\n", nread, junk, crc_errors);
+    printf("Read %d bytes total, junk between messages: %d bytes, junk in messages: %d bytes, %d crc errors\n", nread, junk_between_messages, junk_in_messages, crc_errors);
   } 
 
 
